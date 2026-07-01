@@ -1,0 +1,61 @@
+# ===================================
+# Unreal Engine .gitignore
+# 여러 프로젝트에 공용으로 사용 가능
+# ===================================
+
+# Visual Studio / Rider
+.vs/
+.vsconfig
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+.idea/
+
+# Compiled binaries
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+BuildLog/*.txt
+
+# Generated files
+*.VC.db
+*.opendb
+*.sdf
+*.pdb
+
+# Cache/Build
+*.tps
+*.modules
+*.generated.h
+*.generated.cpp
+
+# Packaging results
+Distribution/
+LinuxNoEditor/
+Mac/
+WindowsNoEditor/
+
+# Plugin intermediate (플러그인은 프로젝트마다 다를 수 있어 필요시 주석 해제)
+# Plugins/*/Binaries/
+# Plugins/*/Intermediate/
+
+# Content cooked data
+Content/**/*.uasset.orig
+
+# Crash reports
+CrashReportClient/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# 대용량 미디어는 LFS 권장 (git lfs track 참고)
