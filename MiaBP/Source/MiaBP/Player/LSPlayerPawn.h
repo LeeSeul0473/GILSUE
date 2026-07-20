@@ -59,4 +59,15 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Components", BlueprintReadOnly)
 	float RotationSpeed = 100;
+
+	UFUNCTION(BlueprintCallable)
+	void CallBlueprint(int Money, FString Name);
+
+	void Fire();
+
+	void Roll(float Value);
+	void Pitch(float Value);
+
+	UPROPERTY(EditAnywhere, Category="Data", BlueprintReadOnly)
+	TSubclassOf<class ALSRocket> RocketTemplate;
 };

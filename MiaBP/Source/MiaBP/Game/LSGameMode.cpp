@@ -2,7 +2,7 @@
 
 
 #include "LSGameMode.h"
-#include "MiaBP/MiaBP.h"
+#include "../MiaBP.h"
 #include "../Player/LSPlayerController.h"
 #include "../Player/LSPlayerPawn.h"
 
