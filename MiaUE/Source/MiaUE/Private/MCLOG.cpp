@@ -1,0 +1,3 @@
+#include "MCLOG.h"
+
+DEFINE_LOG_CATEGORY(LogMC)
