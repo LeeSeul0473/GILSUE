@@ -16,8 +16,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-public:	
-	//virtual void Tick(float DeltaTime) override;
+public:
+	virtual void Tick(float DeltaTime) override;
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -58,8 +58,8 @@ protected:
 	TObjectPtr<class UInputAction> RotateAction;
 
 	//Rocket
-	//UPROPERTY(EditAnywhere, Category = "Data", BlueprintReadWrite)
-	//TSubclassOf<class AMyRocket> RocketTemplate;
+	UPROPERTY(EditAnywhere, Category = "Rocket", BlueprintReadWrite)
+	TSubclassOf<class AMCRocket> RocketTemplate;
 
 protected:
 	void Fire();

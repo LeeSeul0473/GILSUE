@@ -10,12 +10,12 @@
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnhancedInputComponent.h"
-//#include "EnhancedInputSubsystems.h"
+#include "Rocket/MCRocket.h"
 
 
 AMCPlayerPlane::AMCPlayerPlane()
 {
-	//PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = true;
 
 	BoxCollisionComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxCollision"));
 	RootComponent = BoxCollisionComponent;
@@ -37,11 +37,15 @@ AMCPlayerPlane::AMCPlayerPlane()
 
 	FloatingMovementComponent = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("FloatingMovement"));
 
-	//static ConstructorHelpers::FClassFinder<AMyRocket> ClassPath(TEXT("/Script/Engine.Blueprint'/Game/Blueprints/BP_Rocket.BP_Rocket_C'"));
-	//if (ClassPath.Succeeded())
-	//{
-	//	RocketTemplate = ClassPath.Class;
-	//}
+	static ConstructorHelpers::FClassFinder<AMCRocket> ClassPath(TEXT("/Script/Engine.Blueprint'/Game/MiaUE/Rocket/BP_MCRocket.BP_MCRocket_C'"));
+	if (ClassPath.Succeeded())
+	{
+		RocketTemplate = ClassPath.Class;
+	}
+	else
+	{
+		MC_LOG(LogMC, Error, TEXT("RocketTemplate Not Found!"));
+	}
 }
 
 void AMCPlayerPlane::BeginPlay()
@@ -49,15 +53,16 @@ void AMCPlayerPlane::BeginPlay()
 	Super::BeginPlay();
 
 	MC_LOG(LogMC, Log, TEXT("Begin"));
-	
+
 }
 
-// Called every frame
-//void AMCPlayerPlane::Tick(float DeltaTime)
-//{
-//	Super::Tick(DeltaTime);
-//
-//}
+void AMCPlayerPlane::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	LeftMeshComponent->AddLocalRotation(FRotator(0, 0, 1440.0f * DeltaTime));
+	RightMeshComponent->AddLocalRotation(FRotator(0, 0, 1440.0f * DeltaTime));
+}
 
 // Called to bind functionality to input
 void AMCPlayerPlane::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -72,14 +77,16 @@ void AMCPlayerPlane::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 void AMCPlayerPlane::Fire()
 {
-	MC_LOG(LogMC, Log, TEXT("Begin"));
+	//MC_LOG(LogMC, Log, TEXT("Begin"));
+	GetWorld()->SpawnActor<AMCRocket>(RocketTemplate, BodyMeshComponent->GetSocketTransform(TEXT("Fire")));
 }
 
 void AMCPlayerPlane::Rotate(const FInputActionValue& Value)
 {
 	FVector2D RotateVector = Value.Get<FVector2D>();
 
-	MC_LOG(LogMC, Log, TEXT("Begin : %f, %f"), RotateVector.X, RotateVector.Y);
+	//MC_LOG(LogMC, Log, TEXT("Begin : %f, %f"), RotateVector.X, RotateVector.Y);
+	AddActorLocalRotation(UGameplayStatics::GetWorldDeltaSeconds(GetWorld()) * FRotator(RotateVector.Y, 0, RotateVector.X) * 45);
 }
 
 
