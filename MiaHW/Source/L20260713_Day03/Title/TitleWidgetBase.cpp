@@ -41,6 +41,7 @@ void UTitleWidgetBase::NativeConstruct()
 	{
 		WebApi->OnLoginResult.AddUniqueDynamic(this, &UTitleWidgetBase::ProcessLoginResult);
 		WebApi->OnSignUpResult.AddUniqueDynamic(this, &UTitleWidgetBase::ProcessSignUpResult);
+		WebApi->OnServerInfoResult.AddUniqueDynamic(this, &UTitleWidgetBase::ProcessServerInfoResult);
 	}
 }
 
@@ -69,10 +70,18 @@ void UTitleWidgetBase::ConnectServer()
 		return;
 	}
 
-	SaveData();
+	UGameInstance* GI = GetGameInstance();
+	UDataGameInstanceSubsystem* Data = GI ? GI->GetSubsystem<UDataGameInstanceSubsystem>() : nullptr;
+	if (!Data || Data->GameServerIP.IsEmpty())
+	{
+		SetInfoText(TEXT("등록된 서버가 없습니다"));
+		return;
+	}
+
+	const FString Target = FString::Printf(TEXT("%s:%d"), *Data->GameServerIP, Data->GameServerPort);
 
 	UGameplayStatics::OpenLevel(GetWorld(),
-		FName(ServerIP->GetText().ToString()),
+		FName(Target),
 		true,
 		TEXT("Key=100")
 	);
@@ -167,9 +176,9 @@ void UTitleWidgetBase::ProcessLoginResult(const bool bInSuccess, const FString& 
 		StartServerButton->SetIsEnabled(true);
 	}
 
-	if (ConnectServerButton)
+	if (UWebApiSubsystem* WebApi = GetWebApi())
 	{
-		ConnectServerButton->SetIsEnabled(true);
+		WebApi->RequestServerInfo(ServerIP->GetText().ToString());
 	}
 }
 
@@ -178,6 +187,26 @@ void UTitleWidgetBase::ProcessSignUpResult(const bool bInSuccess, const FString&
 	bRequestInFlight = false;
 
 	SetInfoText(bInSuccess ? TEXT("가입이 완료되었습니다. 로그인해 주세요.") : InMessage);
+}
+
+void UTitleWidgetBase::ProcessServerInfoResult(const bool bInSuccess, const FString& InServerIP, const int32 InServerPort, const FString& InMessage)
+{
+	UGameInstance* GI = GetGameInstance();
+	UDataGameInstanceSubsystem* Data = GI ? GI->GetSubsystem<UDataGameInstanceSubsystem>() : nullptr;
+
+	if (!bInSuccess || !Data)
+	{
+		SetInfoText(InMessage);
+		return;
+	}
+
+	Data->GameServerIP = InServerIP;
+	Data->GameServerPort = InServerPort;
+
+	if (ConnectServerButton)
+	{
+		ConnectServerButton->SetIsEnabled(true);
+	}
 }
 
 UWebApiSubsystem* UTitleWidgetBase::GetWebApi() const

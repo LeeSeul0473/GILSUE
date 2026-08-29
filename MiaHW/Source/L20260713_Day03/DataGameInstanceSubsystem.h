@@ -29,6 +29,12 @@ public:
 	FString ServerIP;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Data")
+	FString GameServerIP;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Data")
+	int32 GameServerPort = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Data")
 	bool bLoggedIn = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Data")

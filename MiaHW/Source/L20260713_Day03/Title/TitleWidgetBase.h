@@ -69,6 +69,9 @@ public:
 	UFUNCTION()
 	void ProcessSignUpResult(const bool bInSuccess, const FString& InMessage);
 
+	UFUNCTION()
+	void ProcessServerInfoResult(const bool bInSuccess, const FString& InServerIP, const int32 InServerPort, const FString& InMessage);
+
 private:
 
 	UWebApiSubsystem* GetWebApi() const;
