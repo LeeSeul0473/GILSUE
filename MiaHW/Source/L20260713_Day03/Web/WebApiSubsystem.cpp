@@ -26,6 +26,61 @@ void UWebApiSubsystem::RequestSignUp(const FString& InServerIP, const FString& I
 	SendAuthRequest(InServerIP, TEXT("/signup"), InUserID, InPassword, OnSignUpResult, false);
 }
 
+void UWebApiSubsystem::RequestRegisterServer(const FString& InWebServerIP, int32 InGamePort)
+{
+	TSharedRef<FJsonObject> JsonObject = MakeShared<FJsonObject>();
+	JsonObject->SetNumberField(TEXT("port"), InGamePort);
+
+	FString Body;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Body);
+	FJsonSerializer::Serialize(JsonObject, Writer);
+
+	const FString Url = FString::Printf(TEXT("http://%s:%d/server/register"), *InWebServerIP, WebServerPort);
+
+	FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
+	Request->SetURL(Url);
+	Request->SetVerb(TEXT("POST"));
+	Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+	Request->SetContentAsString(Body);
+
+	TWeakObjectPtr<UWebApiSubsystem> WeakThis(this);
+	Request->OnProcessRequestComplete().BindLambda(
+		[WeakThis](FHttpRequestPtr, FHttpResponsePtr InResponse, bool bInConnectedSuccessfully)
+		{
+			if (!WeakThis.IsValid())
+			{
+				return;
+			}
+
+			WeakThis->HandleRegisterServerResponse(InResponse, bInConnectedSuccessfully);
+		});
+
+	Request->ProcessRequest();
+}
+
+void UWebApiSubsystem::RequestServerInfo(const FString& InWebServerIP)
+{
+	const FString Url = FString::Printf(TEXT("http://%s:%d/server/info"), *InWebServerIP, WebServerPort);
+
+	FHttpRequestRef Request = FHttpModule::Get().CreateRequest();
+	Request->SetURL(Url);
+	Request->SetVerb(TEXT("GET"));
+
+	TWeakObjectPtr<UWebApiSubsystem> WeakThis(this);
+	Request->OnProcessRequestComplete().BindLambda(
+		[WeakThis](FHttpRequestPtr, FHttpResponsePtr InResponse, bool bInConnectedSuccessfully)
+		{
+			if (!WeakThis.IsValid())
+			{
+				return;
+			}
+
+			WeakThis->HandleServerInfoResponse(InResponse, bInConnectedSuccessfully);
+		});
+
+	Request->ProcessRequest();
+}
+
 void UWebApiSubsystem::SendAuthRequest(const FString& InServerIP, const FString& InPath,
 	const FString& InUserID, const FString& InPassword,
 	FWebApiResultSignature& InDelegate, const bool bInIsLogin)
@@ -110,4 +165,48 @@ void UWebApiSubsystem::HandleAuthResponse(FHttpResponsePtr InResponse, const boo
 	}
 
 	InDelegate.Broadcast(true, TEXT(""));
+}
+
+void UWebApiSubsystem::HandleRegisterServerResponse(FHttpResponsePtr InResponse, const bool bInConnectedSuccessfully)
+{
+	if (!bInConnectedSuccessfully || !InResponse.IsValid() || InResponse->GetResponseCode() != 200)
+	{
+		OnRegisterServerResult.Broadcast(false, TEXT("서버 등록에 실패했습니다"));
+		return;
+	}
+
+	TSharedPtr<FJsonObject> JsonObject;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(InResponse->GetContentAsString());
+	if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid())
+	{
+		OnRegisterServerResult.Broadcast(false, TEXT("응답을 해석할 수 없습니다"));
+		return;
+	}
+
+	OnRegisterServerResult.Broadcast(JsonObject->GetBoolField(TEXT("result")), JsonObject->GetStringField(TEXT("message")));
+}
+
+void UWebApiSubsystem::HandleServerInfoResponse(FHttpResponsePtr InResponse, const bool bInConnectedSuccessfully)
+{
+	if (!bInConnectedSuccessfully || !InResponse.IsValid() || InResponse->GetResponseCode() != 200)
+	{
+		OnServerInfoResult.Broadcast(false, TEXT(""), 0, TEXT("서버 정보를 가져올 수 없습니다"));
+		return;
+	}
+
+	TSharedPtr<FJsonObject> JsonObject;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(InResponse->GetContentAsString());
+	if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid())
+	{
+		OnServerInfoResult.Broadcast(false, TEXT(""), 0, TEXT("응답을 해석할 수 없습니다"));
+		return;
+	}
+
+	if (!JsonObject->GetBoolField(TEXT("result")))
+	{
+		OnServerInfoResult.Broadcast(false, TEXT(""), 0, JsonObject->GetStringField(TEXT("message")));
+		return;
+	}
+
+	OnServerInfoResult.Broadcast(true, JsonObject->GetStringField(TEXT("ip")), JsonObject->GetIntegerField(TEXT("port")), TEXT(""));
 }
