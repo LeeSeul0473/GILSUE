@@ -5,6 +5,13 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "LobbyGS.h"
 #include "LobbyPC.h"
+#include "../DataGameInstanceSubsystem.h"
+#include "../Web/WebApiSubsystem.h"
+
+namespace
+{
+	constexpr int32 ListenServerPort = 7777;
+}
 
 void ALobbyGM::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
 {
@@ -61,7 +68,20 @@ void ALobbyGM::BeginPlay()
 {
 	Super::BeginPlay();
 
-	
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UWebApiSubsystem* WebApi = GI->GetSubsystem<UWebApiSubsystem>())
+		{
+			WebApi->OnRegisterServerResult.AddUniqueDynamic(this, &ALobbyGM::HandleServerRegisterResult);
+
+			if (UDataGameInstanceSubsystem* Data = GI->GetSubsystem<UDataGameInstanceSubsystem>())
+			{
+				WebApi->RequestRegisterServer(Data->ServerIP, ListenServerPort);
+			}
+		}
+	}
+
+
 	GetWorld()->GetTimerManager().SetTimer(
 		LeftTimeHandle,
 		FTimerDelegate::CreateLambda([this]() {
@@ -86,7 +106,7 @@ void ALobbyGM::CountConnection()
 	{
 		GS->ConnectionCount = Count;
 
-		//ReplicatedUsingÀÌÁö¸¸ C++¿¡¼­´Â È£ÃâÀÌ ¾ÈµÊ.
+		//ReplicatedUsingï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ C++ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È£ï¿½ï¿½ï¿½ï¿½ ï¿½Èµï¿½.
 		GS->OnRep_ConnectionCount();
 	}
 }
@@ -100,7 +120,7 @@ void ALobbyGM::CountDownLeftTime()
 		GS->LeftTime--;
 		GS->LeftTime = FMath::Clamp(GS->LeftTime, 0, 60);
 
-		//ReplicatedUsingÀÌÁö¸¸ C++¿¡¼­´Â È£ÃâÀÌ ¾ÈµÊ.
+		//ReplicatedUsingï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ C++ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È£ï¿½ï¿½ï¿½ï¿½ ï¿½Èµï¿½.
 		GS->OnRep_LeftTime();
 
 		if (GS->LeftTime <= 0)
@@ -133,4 +153,9 @@ void ALobbyGM::StartGame()
 	GetWorld()->ServerTravel(TEXT("Lvl_ThirdPerson"));
 
 
+}
+
+void ALobbyGM::HandleServerRegisterResult(const bool bInSuccess, const FString& InMessage)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ServerRegister: %s %s"), bInSuccess ? TEXT("OK") : TEXT("FAIL"), *InMessage);
 }

@@ -28,6 +28,9 @@ public:
 
 	virtual void BeginPlay() override;
 
+	UFUNCTION()
+	void HandleServerRegisterResult(const bool bInSuccess, const FString& InMessage);
+
 	FTimerHandle LeftTimeHandle;
 
 
