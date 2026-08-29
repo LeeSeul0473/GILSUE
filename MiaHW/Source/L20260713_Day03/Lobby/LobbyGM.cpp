@@ -106,7 +106,7 @@ void ALobbyGM::CountConnection()
 	{
 		GS->ConnectionCount = Count;
 
-		//ReplicatedUsing������ C++������ ȣ���� �ȵ�.
+		//ReplicatedUsing이지만 C++에서는 호출이 안됨.
 		GS->OnRep_ConnectionCount();
 	}
 }
@@ -120,7 +120,7 @@ void ALobbyGM::CountDownLeftTime()
 		GS->LeftTime--;
 		GS->LeftTime = FMath::Clamp(GS->LeftTime, 0, 60);
 
-		//ReplicatedUsing������ C++������ ȣ���� �ȵ�.
+		//ReplicatedUsing이지만 C++에서는 호출이 안됨.
 		GS->OnRep_LeftTime();
 
 		if (GS->LeftTime <= 0)
