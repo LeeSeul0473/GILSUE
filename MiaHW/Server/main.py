@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from pydantic import BaseModel, Field
 import pymysql
 
@@ -18,6 +18,22 @@ class AuthResponse(BaseModel):
     idx: int = 0
     nickname: str = ""
     level: int = 0
+
+
+class RegisterServerRequest(BaseModel):
+    port: int = Field(gt=0)
+
+
+class RegisterServerResponse(BaseModel):
+    result: bool
+    message: str = ""
+
+
+class ServerInfoResponse(BaseModel):
+    result: bool
+    ip: str = ""
+    port: int = 0
+    message: str = ""
 
 
 @app.post("/signup", response_model=AuthResponse)
@@ -70,3 +86,38 @@ def login(req: AuthRequest):
         nickname=row["nickname"],
         level=row["level"],
     )
+
+
+@app.post("/server/register", response_model=RegisterServerResponse)
+def register_server(req: RegisterServerRequest, request: Request):
+    ip = request.client.host
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO game_server (idx, ip, port, registered_at)"
+                " VALUES (1, %s, %s, NOW())"
+                " ON DUPLICATE KEY UPDATE ip = %s, port = %s, registered_at = NOW()",
+                (ip, req.port, ip, req.port),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return RegisterServerResponse(result=True)
+
+
+@app.get("/server/info", response_model=ServerInfoResponse)
+def get_server_info():
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT ip, port FROM game_server WHERE idx = 1")
+            row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        return ServerInfoResponse(result=False, message="등록된 서버가 없습니다")
+
+    return ServerInfoResponse(result=True, ip=row["ip"], port=row["port"])
