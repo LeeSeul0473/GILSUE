@@ -2,9 +2,9 @@ import pymysql
 
 DB_CONFIG = dict(
     host="127.0.0.1",
-    port=3306,
+    port=7070,
     user="root",
-    password="qweasd123",
+    password="1111",
     db="seul",
     charset="utf8mb4",
 )

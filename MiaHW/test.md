@@ -75,4 +75,72 @@ cd Server
 - `ConnectServer` 버튼이 안 켜짐 → A가 `StartServer`를 먼저 눌러서 등록이 끝났는지, 웹서버 터미널에 `/server/register` 로그가 찍혔는지 확인
 - 웹서버 연결 안 됨 메시지 → `run.bat` 창이 계속 켜져 있는지, 방화벽이 8080 포트를 막고 있는지 확인
 - DB 에러 → `Server/db.py`의 접속 정보(호스트/포트/계정)가 실제 MySQL과 맞는지 확인
-- 접속은 됐는데 다른 PC에서는 안 됨 → `run.bat`이 `127.0.0.1`에만 붙어서 원래 한 대에서만 되는 구조임. 다른 PC 테스트가 필요하면 `run.bat`의 uvicorn 실행줄에 `--host 0.0.0.0` 추가해야 함 (보안 관련이라 기본값으로는 안 넣어둠)
+- 접속은 됐는데 다른 PC에서는 안 됨 → 아래 "다른 PC에서 테스트할 때" 항목 참고. 원인이 두 개라 한 줄로 안 끝남
+
+
+## 다른 PC에서 테스트할 때 (현재 구조의 제약)
+
+같은 PC 안에서 창 2개로 하는 테스트는 위 절차대로 하면 통과한다. **PC 2대로 넘어가면 두 가지를 손봐야 한다.**
+
+### 1) 웹서버를 외부에 열기
+
+`run.bat`의 uvicorn 실행줄에 `--host 0.0.0.0`을 추가한다. 기본값은 `127.0.0.1` 전용이라 다른 PC에서 8080에 닿지 못한다. 방화벽에서 8080 인바운드도 허용해야 한다.
+
+```
+.venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8080
+```
+
+### 2) 웹서버와 리슨서버를 같은 PC에서 돌리지 말 것
+
+서버 등록은 웹서버가 본 요청 소스 IP(`request.client.host`)를 그대로 DB에 저장한다. 웹서버와 리슨서버(인스턴스 A)가 같은 PC면 그 값이 `127.0.0.1`로 저장되고, 다른 PC의 클라이언트 B는 `127.0.0.1`을 받아 자기 자신에게 접속을 시도해서 실패한다.
+
+권장 배치:
+
+| 역할 | 배치 |
+|---|---|
+| 웹서버(FastAPI) + MySQL | PC 1 |
+| 인스턴스 A (StartServer) | PC 2 |
+| 인스턴스 B (ConnectServer) | PC 3 (또는 PC 1) |
+
+A와 B 모두 Title 화면의 웹서버 주소 칸에 **PC 1의 LAN IP**를 입력한다.
+
+PC 2대만 있다면: 웹서버는 PC 1, 인스턴스 A는 PC 2, 인스턴스 B는 PC 1에 두면 된다. A가 등록하는 IP가 PC 2의 LAN IP가 되므로 정상 동작한다.
+
+### 3) 게임 포트는 7777 고정
+
+클라이언트 접속 포트는 `LobbyGM.cpp`에 7777로 하드코딩돼 있다. 언리얼을 `-port=` 옵션으로 다른 포트에 띄우면 DB에는 여전히 7777이 저장되어 B의 접속이 실패한다. 포트 옵션 없이 기본값으로 실행할 것. 방화벽에서 7777 인바운드(UDP)도 허용해야 한다.
+
+## 재테스트 전 초기화
+
+등록된 서버 정보는 **자동으로 지워지지 않는다.** 인스턴스 A를 껐다 다시 켜거나 다른 PC로 옮겨서 테스트하면, `/server/info`가 이전에 등록된 죽은 IP를 그대로 반환해서 B의 `ConnectServer`가 응답 없이 멈출 수 있다.
+
+테스트 조건을 바꿀 때마다 아래를 먼저 실행한다.
+
+```sql
+DELETE FROM seul.game_server;
+```
+
+현재 등록된 값은 브라우저로 바로 확인할 수 있다.
+
+```
+http://<웹서버IP>:8080/server/info
+```
+
+`{"result":true,"ip":"...","port":7777,"message":""}` 형태로 나오고, ip가 지금 A를 돌리는 PC의 주소와 일치하는지 확인한다. `{"result":false,...}`면 아직 등록되지 않은 상태다.
+
+## member 테이블에 대한 보충
+
+`Server/schema.sql`에는 `game_server` 테이블만 들어 있다. 로그인/회원가입이 쓰는 `member` 테이블은 이전 작업에서 만든 것으로, 스키마 파일에 포함돼 있지 않다. 새 PC나 새 DB에서 처음부터 세팅한다면 아래 구조로 먼저 만들어야 `/login`, `/signup`이 동작한다.
+
+```sql
+CREATE TABLE IF NOT EXISTS member (
+    idx INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(45) NOT NULL,
+    passwd VARCHAR(255) NOT NULL,
+    nickname VARCHAR(45) NOT NULL,
+    level INT NOT NULL DEFAULT 1,
+    UNIQUE KEY user_id_UNIQUE (user_id)
+);
+```
+
+기존 `seul` DB를 그대로 쓴다면 이 단계는 건너뛴다.
